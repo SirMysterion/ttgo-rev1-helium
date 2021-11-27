@@ -51,14 +51,14 @@ void ttn_register(void (*callback)(uint8_t message));
 //#define SINGLE_CHANNEL_GATEWAY  0
 
 //Uncomment if you always want to see the boot logo at boot time
-#define ALWAYS_SHOW_LOGO
+// #define ALWAYS_SHOW_LOGO
 
 //Uncomment to enable discarding network settings by long pressing second button
-//#define PREFS_DISCARD
+#define PREFS_DISCARD
 
 // If you are having difficulty sending messages to TTN after the first successful send,
 // uncomment the next option and experiment with values (~ 1 - 5)
-//#define CLOCK_ERROR             5
+#define CLOCK_ERROR             3
 
 #define DEBUG_PORT              Serial          // Serial debug port
 #define SERIAL_BAUD             115200          // Serial debug baud rate

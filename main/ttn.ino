@@ -325,7 +325,7 @@ void ttn_join() {
         LMIC_setSession(0x1, DEVADDR, nwkskey, appskey);
 
         // TTN uses SF9 for its RX2 window.
-        LMIC.dn2Dr = DR_SF9;
+        LMIC.dn2Dr = DR_SF12;
 
         // Trigger a false joined
         _ttn_callback(EV_JOINED);
