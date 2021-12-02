@@ -113,7 +113,7 @@ static void gps_loop() {
 #elif defined(PAYLOAD_USE_CAYENNE)
 
     // CAYENNE DF
-    void buildPacket(uint8_t txBuffer[11])
+    void buildPacket(uint8_t txBuffer[12])
     {
         sprintf(t, "Lat: %f", _gps.location.lat());
         Serial.println(t);
