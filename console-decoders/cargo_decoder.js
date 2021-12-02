@@ -14,6 +14,7 @@ function Decoder(bytes, port) {
 
     decoded.hdop = bytes[8] / 10.0;
     decoded.sats = bytes[9];
-
+    decoded.speed = bytes[10];
+    decoded.bat = bytes[11];
     return decoded;
 }

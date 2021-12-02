@@ -21,6 +21,67 @@ Same as Fizzy I have not done any of the coding. My only idea with this fork is 
     - Corrected some file edit paths
 
 -------------
+
+Further modifications added by [tmiklas](https://github.com/tmiklas/tbeam-helium-mapper):
+
+**2021-11-18** - Introducing **distance target** mode (a.k.a. TX window scaling)
+
+Verison: `1.1-tm`
+
+Most mappers usually operate in **time target** mode, where they send data to network every set interval (i.e. `SEND_INTERVAL`). There is however a different use case for fast moving mappers - like in a car at motorway speeds...
+
+This feature allows you to switch mapping mode from time target to distace target and back. You can configure your desierd distance target in `configuration.h` and turn ON/OFF by pressing the `USR` button for over 1sec:
+
+```
+#define DISTANCE_TARGET          200.0     // MUST be decimal number; distance target in meters
+```
+
+![T-Beam buttons](img/t-beam-buttons.jpeg)
+
+Once moving, you will be able to see it operating properly and reporting TX window:
+
+![TX Window Scaling](img/TX-window-scaling.jpeg)
+
+In simple terms, with distance target set to 200m (as default in this code), window scaling starts working once you travel at speed over 10m/s (36k/h or 22.3mph). There's also a lower limit - do not transmit more often than every 2sec... so with 200m target you are good up to 100m/s (360k/h or 223mph) - good luck :-P
+
+**2021-11-14** - Added some new features
+
+Verison: `1.0-tm`
+
+> Send Now - transmit on deman by short-pressing 2nd button
+
+Reacts to short-press of the central button and overrides any travel distance requirement (see 2 below).
+Intended for use when you are just skimming the hex you want to light up and don't want to or can't wait
+for the usual 30sec cycle.
+
+> Not moving, not transmitting (configurable)
+
+Normally mapper sends location every 30sec, but if you are stationary, there location doesn't change (except possible GPS drift), so ongoing transmissions makes little if any sense, only burns DC. To avoid that, mapper will no longer report position every cycle unless it is actually moving or once every N cycles if stationary to say it's still alive and working.
+
+This is controlled by 2 variables in `configuration.h` file, `MIN_DIST` and `STATIONARY_TX_INTERVAL`.
+
+Example:
+
+```
+#define SEND_INTERVAL           (20 * 1000)     // Sleep for these many millis
+
+// -----------------------------------------------------------------------------
+// LoRa send criteria
+// -----------------------------------------------------------------------------
+#define MIN_DIST                 50.0      // MUST be decimal number; minimum distance in meters from the last sent location before we can send again. A hex is about 340m, divide by this value to get the pings per hex.
+#define STATIONARY_TX_INTERVAL   60        // If stationary the LoRa frame will be sent once every N cycles... with 20sec cycle, interval of 60 means to transmit once every 20min
+
+```
+
+With the default cycle time of 30sec means that mapper will transmit location if:
+
+- it has moved at least 50m from previously transmitted coordinates,
+- when it was stationary for 60 cycles (or 30 minutes),
+- ... or user short-pressed 2nd button, which ignores distance/time requirements
+
+
+
+-------------
 Ref: https://github.com/helium/longfi-arduino/tree/master/TTGO-TBeam-Tracker
 
 This code was originally developed for use on The Things Network (TTN) it has been editied/repurposed for use with the Helium Network.
@@ -94,6 +155,7 @@ function Decoder(bytes, port) {
 Now that your device is hopefully connecting to the Helium network refer to the following for more details about interpreting the mapping data.
 - For the Helium Mapping effort visit [here](https://docs.helium.com/use-the-network/coverage-mapping)
 - For the Helium Cargo effort visit [here](https://docs.helium.com/use-the-network/console/integrations/cargo). Pay particular attention to the "Info" note found on this page.
+- For the TTNMapper.org Helium Heatmap effort visit [here](https://docs.ttnmapper.org/integration/helium.html)
 
 
 ### T-BEAM Board Versions

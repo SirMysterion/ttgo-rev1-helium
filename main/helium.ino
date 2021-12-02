@@ -23,7 +23,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
+#include <Arduino.h>
 #include <hal/hal.h>
 #include <SPI.h>
 #include <vector>
@@ -68,35 +68,18 @@ std::vector<void(*)(uint8_t message)> _lmic_callbacks;
 // Private methods
 // -----------------------------------------------------------------------------
 
-void _ttn_callback(uint8_t message) {
+void _helium_callback(uint8_t message) {
     for (uint8_t i=0; i<_lmic_callbacks.size(); i++) {
         (_lmic_callbacks[i])(message);
     }
 }
-
-void forceTxSingleChannelDr() {
-    // Disables all channels, except for the one defined by SINGLE_CHANNEL_GATEWAY
-    // This only affects uplinks; for downlinks the default
-    // channels or the configuration from the OTAA Join Accept are used.
-    #ifdef SINGLE_CHANNEL_GATEWAY
-    for(int i=0; i<9; i++) { // For EU; for US use i<71
-        if(i != SINGLE_CHANNEL_GATEWAY) {
-            LMIC_disableChannel(i);
-        }
-    }
-    #endif
-
-    // Set data rate (SF) and transmit power for uplink
-    ttn_sf(LORAWAN_SF);
-}
-
 
 // DevEUI generator using devices's MAC address - from https://github.com/cyberman54/ESP32-Paxcounter/blob/master/src/lorawan.cpp
 void gen_lora_deveui(uint8_t *pdeveui) {
     uint8_t *p = pdeveui, dmac[6];
     int i = 0;
     esp_efuse_mac_get_default(dmac);
-    // deveui is LSB, we reverse it so TTN DEVEUI display
+    // deveui is LSB, we reverse it so helium DEVEUI display
     // will remain the same as MAC address
     // MAC is 6 bytes, devEUI 8, set first 2 ones
     // with an arbitrary value
@@ -126,7 +109,7 @@ void initDevEUI() {
     if(needInit)
         gen_lora_deveui(DEVEUI);
 
-    Serial.print("DevEUI: ");
+    Serial.print("\n\nDevEUI: ");
     for(int i = 0; i < sizeof(DEVEUI); i++) {
         if (i != 0)
                 Serial.print("-");
@@ -140,10 +123,7 @@ void initDevEUI() {
 void onEvent(ev_t event) {
     switch(event) {
     case EV_JOINED: {
-        #ifdef SINGLE_CHANNEL_GATEWAY
-        forceTxSingleChannelDr();
-        #endif
-
+        
         // Disable link check validation (automatically enabled
         // during join, but because slow data rates change max TX
         // size, we don't use it in this example.
@@ -190,13 +170,13 @@ void onEvent(ev_t event) {
         Serial.println(F("EV_TXCOMPLETE (inc. RX win. wait)"));
         if (LMIC.txrxFlags & TXRX_ACK) {
             Serial.println(F("Received ack"));
-            _ttn_callback(EV_ACK);
+            _helium_callback(EV_ACK);
         }
         if (LMIC.dataLen) {
             Serial.print(F("Data Received: "));
             Serial.write(LMIC.frame+LMIC.dataBeg, LMIC.dataLen);
             Serial.println();
-            _ttn_callback(EV_RESPONSE);
+            _helium_callback(EV_RESPONSE);
         }
         break;
     default:
@@ -204,22 +184,22 @@ void onEvent(ev_t event) {
     }
 
     // Send message callbacks
-    _ttn_callback(event);
+    _helium_callback(event);
 }
 
 // -----------------------------------------------------------------------------
 // Public methods
 // -----------------------------------------------------------------------------
 
-void ttn_register(void (*callback)(uint8_t message)) {
+void helium_register(void (*callback)(uint8_t message)) {
     _lmic_callbacks.push_back(callback);
 }
 
-size_t ttn_response_len() {
+size_t helium_response_len() {
     return LMIC.dataLen;
 }
 
-void ttn_response(uint8_t * buffer, size_t len) {
+void helium_response(uint8_t * buffer, size_t len) {
     for (uint8_t i = 0; i < LMIC.dataLen; i++) {
         buffer[i] = LMIC.frame[LMIC.dataBeg + i];
     }
@@ -237,7 +217,7 @@ static void initCount() {
 }
 
 
-bool ttn_setup() {
+bool helium_setup() {
     initCount();
 
     #if defined(USE_OTAA)
@@ -251,7 +231,7 @@ bool ttn_setup() {
     return ( 1 == os_init_ex( (const void *) &lmic_pins ) );
 }
 
-void ttn_join() {
+void helium_join() {
     // Reset the MAC state. Session and pending data transfers will be discarded.
     LMIC_reset();
 
@@ -307,40 +287,17 @@ void ttn_join() {
         // Disable link check validation
         LMIC_setLinkCheckMode(0);
 
-        #ifdef SINGLE_CHANNEL_GATEWAY
-        forceTxSingleChannelDr();
-        #else
+    
+        
         // Set default rate and transmit power for uplink (note: txpow seems to be ignored by the library)
-        ttn_sf(LORAWAN_SF);
-        #endif
+        helium_sf(LORAWAN_SF);
+        
 
-    #if defined(USE_ABP)
-
-        // Set static session parameters. Instead of dynamically establishing a session
-        // by joining the network, precomputed session parameters are be provided.
-        uint8_t appskey[sizeof(APPSKEY)];
-        uint8_t nwkskey[sizeof(NWKSKEY)];
-        memcpy_P(appskey, APPSKEY, sizeof(APPSKEY));
-        memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
-        LMIC_setSession(0x1, DEVADDR, nwkskey, appskey);
-
-        // TTN uses SF9 for its RX2 window.
-        LMIC.dn2Dr = DR_SF12;
-
-        // Trigger a false joined
-        _ttn_callback(EV_JOINED);
-
-    #elif defined(USE_OTAA)
+    #if defined(USE_OTAA)
 
         // Make LMiC initialize the default channels, choose a channel, and
         // schedule the OTAA join
         LMIC_startJoining();
-
-        #ifdef SINGLE_CHANNEL_GATEWAY
-        // LMiC will already have decided to send on one of the 3 default
-        // channels; ensure it uses the one we want
-        LMIC.txChnl = SINGLE_CHANNEL_GATEWAY;
-        #endif
 
         Preferences p;
         p.begin("lora", true); // we intentionally ignore failure here
@@ -363,30 +320,30 @@ void ttn_join() {
             LMIC_setSession(netId, devAddr, nwkKey, artKey);
 
             // Trigger a false joined
-            _ttn_callback(EV_JOINED);
+            _helium_callback(EV_JOINED);
         }
 
     #endif
 }
 
-void ttn_sf(unsigned char sf) {
+void helium_sf(unsigned char sf) {
     LMIC_setDrTxpow(sf, 14);
 }
 
-void ttn_adr(bool enabled) {
+void helium_adr(bool enabled) {
     LMIC_setAdrMode(enabled);
     LMIC_setLinkCheckMode(!enabled);
 }
 
-uint32_t ttn_get_count() {
+uint32_t helium_get_count() {
   return count;
 }
 
-static void ttn_set_cnt() {
+static void helium_set_cnt() {
     LMIC_setSeqnoUp(count);
 
     // We occasionally mirror our count to flash, to ensure that if we lose power we will at least start with a count that is almost correct 
-    // (otherwise the TNN network will discard packets until count once again reaches the value they've seen).  We limit these writes to a max rate
+    // (otherwise the networkserver will discard packets until count once again reaches the value they've seen).  We limit these writes to a max rate
     // of one write every 5 minutes.  Which should let the FLASH last for 300 years (given the ESP32 NVS algoritm)
     static uint32_t lastWriteMsec = UINT32_MAX; // Ensure we write at least once
     uint32_t now = millis();
@@ -402,7 +359,7 @@ static void ttn_set_cnt() {
 }
 
 /// Blow away our prefs (i.e. to rejoin from scratch)
-void ttn_erase_prefs() {
+void helium_erase_prefs() {
     Preferences p;
     if(p.begin("lora", false)) {
         p.clear();
@@ -410,12 +367,12 @@ void ttn_erase_prefs() {
     }
 }
 
-void ttn_send(uint8_t * data, uint8_t data_size, uint8_t port, bool confirmed){
-    ttn_set_cnt(); // we are about to send using the current packet count
+void helium_send(uint8_t * data, uint8_t data_size, uint8_t port, bool confirmed){
+    helium_set_cnt(); // we are about to send using the current packet count
 
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
-        _ttn_callback(EV_PENDING);
+        _helium_callback(EV_PENDING);
         return;
     }
 
@@ -423,10 +380,10 @@ void ttn_send(uint8_t * data, uint8_t data_size, uint8_t port, bool confirmed){
     // Parameters are port, data, length, confirmed
     LMIC_setTxData2(port, data, data_size, confirmed ? 1 : 0);
 
-    _ttn_callback(EV_QUEUED);
+    _helium_callback(EV_QUEUED);
     count++;
 }
 
-void ttn_loop() {
+void helium_loop() {
     os_runloop_once();
 }

@@ -26,14 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <Arduino.h>
 #include <lmic.h>
-void ttn_register(void (*callback)(uint8_t message));
+void helium_register(void (*callback)(uint8_t message));
 
 // -----------------------------------------------------------------------------
 // Version
 // -----------------------------------------------------------------------------
 
 #define APP_NAME                "Helium TTGO"
-#define APP_VERSION             "1"
+#define APP_VERSION             "1.1-tm"
 
 // -----------------------------------------------------------------------------
 // Configuration
@@ -43,28 +43,25 @@ void ttn_register(void (*callback)(uint8_t message));
 //#define T_BEAM_V07  // AKA Rev0 (first board released)
  #define T_BEAM_V10  // AKA Rev1 (second board released)
 
-// Select the payload format. Change on TTN as well. Only uncomment one.
+// Select the payload format. Select apropriate decoder function as well. Only uncomment one.
 #define PAYLOAD_USE_FULL
 //#define PAYLOAD_USE_CAYENNE
 
-// If using a single-channel gateway, uncomment this next option and set to your gateway's channel
-//#define SINGLE_CHANNEL_GATEWAY  0
-
 //Uncomment if you always want to see the boot logo at boot time
-// #define ALWAYS_SHOW_LOGO
+ #define ALWAYS_SHOW_LOGO
 
 //Uncomment to enable discarding network settings by long pressing second button
 #define PREFS_DISCARD
 
-// If you are having difficulty sending messages to TTN after the first successful send,
+// If you are having difficulty sending messages to Helium after the first successful send,
 // uncomment the next option and experiment with values (~ 1 - 5)
-#define CLOCK_ERROR             3
+ #define CLOCK_ERROR             2
 
 #define DEBUG_PORT              Serial          // Serial debug port
 #define SERIAL_BAUD             115200          // Serial debug baud rate
 #define SLEEP_BETWEEN_MESSAGES  false           // Do sleep between messages
-#define SEND_INTERVAL           (20 * 1000)     // Sleep for these many millis
-#define MESSAGE_TO_SLEEP_DELAY  5000            // Time after message before going to sleep
+#define SEND_INTERVAL           (360 * 1000)     // Sleep for these many millis
+#define MESSAGE_TO_SLEEP_DELAY  10000            // Time after message before going to sleep
 #define LOGO_DELAY              5000            // Time to show logo on first boot
 #define LORAWAN_PORT            10              // Port the messages will be sent to
 #define LORAWAN_CONFIRMED_EVERY 0               // Send confirmed message every these many messages (0 means never)
@@ -73,7 +70,15 @@ void ttn_register(void (*callback)(uint8_t message));
 #define REQUIRE_RADIO           true            // If true, we will fail to start if the radio is not found
 
 // If not defined, we will wait for lock forever
-#define GPS_WAIT_FOR_LOCK       (60 * 1000)     // Wait after every boot for GPS lock (may need longer than 5s because we turned the gps off during deep sleep)
+#define GPS_WAIT_FOR_LOCK       (120 * 1000)     // Wait after every boot for GPS lock (may need longer than 5s because we turned the gps off during deep sleep)
+
+// -----------------------------------------------------------------------------
+// LoRa send criteria
+// -----------------------------------------------------------------------------
+#define MIN_DIST                 50.0      // MUST be decimal number; minimum distance in meters from the last sent location before we can send again. A hex is about 340m, divide by this value to get the pings per hex.
+#define STATIONARY_TX_INTERVAL   60        // If stationary the LoRa frame will be sent once every N cycles... with 30sec cycle, interval of 60 means to transmit once every 30min
+#define DISTANCE_TARGET          200.0     // MUST be decimal number; distance target in meters
+
 
 // -----------------------------------------------------------------------------
 // DEBUG
@@ -155,3 +160,15 @@ void ttn_register(void (*callback)(uint8_t message));
 #define GPS_POWER_CTRL_CH     3
 #define LORA_POWER_CTRL_CH    2
 #define PMU_IRQ               35
+#define PMU_CHG_CURRENT AXP1XX_CHARGE_CUR_550MA // battery charge current
+// possible values (mA):
+// 100/190/280/360/450/550/630/700/780/880/960/1000/1080/1160/1240/1320
+#define PMU_CHG_CUTOFF AXP202_TARGET_VOL_4_2V // battery charge cutoff
+// possible values (V):
+// 4_1/4_15/4_2/4_36
+
+// blue onboard led settings
+// possible values: 
+// AXP20X_LED_OFF / AXP20X_LED_LOW_LEVEL (means LED ON) / AXP20X_LED_BLINK_1HZ / AXP20X_LED_BLINK_4HZ
+#define PMU_LED_RUN_MODE AXP20X_LED_OFF 
+#define PMU_LED_SLEEP_MODE AXP20X_LED_BLINK_1HZ
