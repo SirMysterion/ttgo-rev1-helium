@@ -94,6 +94,7 @@ function Decoder(bytes, port) {
 Now that your device is hopefully connecting to the Helium network refer to the following for more details about interpreting the mapping data.
 - For the Helium Mapping effort visit [here](https://docs.helium.com/use-the-network/coverage-mapping)
 - For the Helium Cargo effort visit [here](https://docs.helium.com/use-the-network/console/integrations/cargo). Pay particular attention to the "Info" note found on this page.
+- For the TTNMapper.org Helium Heatmap effort visit [here](https://docs.ttnmapper.org/integration/helium.html)
 
 
 ### T-BEAM Board Versions

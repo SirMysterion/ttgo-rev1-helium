@@ -1,9 +1,9 @@
 /*
-  This module and those attached with it have been modified for the Helium Network by Fizzy. The following has been changed from the original modifications for Helium, by longfi-arduino: 
+  This module and those attached with it have been modified for the Helium Network by Fizzy. The following has been changed from the original modifications for Helium, by longfi-arduino and further by heopath: 
   - Added Helium Startup Logo
   - Changed App Name and Version of device to reflect more of a device name and number scheme.
   - Enabled long press middle button to Discard Prefs by default for future troubleshooting on device.
-  - Changed Text output to reflect Helium, and not TTL (Code referances ttn, just to prevent brakes in this awesome code)
+  - Changed Text output to reflect Helium, and not TTN
   - Changed credentials file to use OTAA by default.
   - Changed GPS metric output text "Error", to "Accuracy/HDOP".
 
@@ -13,6 +13,7 @@
   Main module
 
   # Modified by Kyle T. Gabriel to fix issue with incorrect GPS data for TTNMapper
+  # Modified by heopath for Helium Naming
 
   Copyright (C) 2018 by Xose Pérez <xose dot perez at gmail dot com>
 
@@ -30,7 +31,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
+#include <Arduino.h>
 #include "configuration.h"
 #include "rom/rtc.h"
 #include <TinyGPS++.h>
@@ -84,15 +85,20 @@ bool trySend() {
     buildPacket(txBuffer);
 
 #if LORAWAN_CONFIRMED_EVERY > 0
-    bool confirmed = (ttn_get_count() % LORAWAN_CONFIRMED_EVERY == 0);
+    bool confirmed = (helium_get_count() % LORAWAN_CONFIRMED_EVERY == 0);
     if (confirmed){ Serial.println("confirmation enabled"); }
 #else
     bool confirmed = false;
 #endif
 
     packetQueued = true;
-    ttn_send(txBuffer, sizeof(txBuffer), LORAWAN_PORT, confirmed);
+    helium_send(txBuffer, sizeof(txBuffer), LORAWAN_PORT, confirmed);
     return true;
+    #ifdef LED_PIN
+    digitalWrite(LED_PIN , LOW);    // turn the LED off by making the voltage LOW
+    delay(500);                       // wait for a second
+    digitalWrite(LED_PIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+    #endif
   }
   else {
     return false;
@@ -114,7 +120,12 @@ void doDeepSleep(uint64_t msecToWake)
         // turn on after initial testing with real hardware
         axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); // LORA radio
         axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); // GPS main power
-    }
+        #ifdef PMU_LED_RUN_MODE
+        axp.setChgLEDMode(PMU_LED_RUN_MODE);
+          #else
+        axp.setChgLEDMode(AXP20X_LED_LOW_LEVEL);
+        #endif 
+      }
 
     // FIXME - use an external 10k pulldown so we can leave the RTC peripherals powered off
     // until then we need the following lines
@@ -142,7 +153,7 @@ void sleep() {
     char buffer[20];
     snprintf(buffer, sizeof(buffer), "Sleeping in %3.1fs\n", (MESSAGE_TO_SLEEP_DELAY / 1000.0));
     screen_print(buffer);
-
+    
     // Wait for MESSAGE_TO_SLEEP_DELAY millis to sleep
     delay(MESSAGE_TO_SLEEP_DELAY);
 
@@ -163,12 +174,12 @@ void sleep() {
 
 
 void callback(uint8_t message) {
-  bool ttn_joined = false;
+  bool helium_joined = false;
   if (EV_JOINED == message) {
-    ttn_joined = true;
+    helium_joined = true;
   }
   if (EV_JOINING == message) {
-    if (ttn_joined) {
+    if (helium_joined) {
         screen_print("Joined Helium!\n");
     } else {
         screen_print("Helium joining...\n");      
@@ -193,9 +204,9 @@ void callback(uint8_t message) {
 
     screen_print("[Helium] Response: ");
 
-    size_t len = ttn_response_len();
+    size_t len = helium_response_len();
     uint8_t data[len];
-    ttn_response(data, len);
+    helium_response(data, len);
 
     char buffer[6];
     for (uint8_t i = 0; i < len; i++) {
@@ -277,6 +288,9 @@ void axp192Init() {
         axp.setPowerOutPut(AXP192_EXTEN, AXP202_ON);
         axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON);
         axp.setDCDC1Voltage(3300); // for the OLED power
+        axp.setDCDC1Voltage(3300); // for external OLED display
+        axp.setLDO2Voltage(3300);  // LORA VDD 3v3
+        axp.setLDO3Voltage(3300);  // GPS VDD 3v3
 
         Serial.printf("DCDC1: %s\n", axp.isDCDC1Enable() ? "ENABLE" : "DISABLE");
         Serial.printf("DCDC2: %s\n", axp.isDCDC2Enable() ? "ENABLE" : "DISABLE");
@@ -340,7 +354,7 @@ void setup() {
 #endif
 
   // Hello
-  DEBUG_MSG(APP_NAME " " APP_VERSION "\n");
+   DEBUG_MSG(APP_NAME " ", APP_VERSION "\n");
 
   // Don't init display if we don't have one or we are waking headless due to a timer event
   if (wakeCause == ESP_SLEEP_WAKEUP_TIMER)
@@ -365,7 +379,7 @@ void setup() {
 #endif
 
   // Helium setup
-  if (!ttn_setup()) {
+  if (!helium_setup()) {
     screen_print("[ERR] Radio module not found!\n");
 
     if (REQUIRE_RADIO) {
@@ -375,15 +389,15 @@ void setup() {
     }
   }
   else {
-    ttn_register(callback);
-    ttn_join();
-    ttn_adr(LORAWAN_ADR);
+    helium_register(callback);
+    helium_join();
+    helium_adr(LORAWAN_ADR);
   }
 }
 
 void loop() {
   gps_loop();
-  ttn_loop();
+  helium_loop();
   screen_loop();
 
   if (packetSent) {
@@ -410,7 +424,7 @@ void loop() {
 #endif 
 #ifdef PREFS_DISCARD
       screen_print("Discarding prefs!\n");
-      ttn_erase_prefs();
+      helium_erase_prefs();
       delay(5000); // Give some time to read the screen
       ESP.restart();
 #endif
@@ -437,9 +451,9 @@ void loop() {
       }
 #endif
 
-      // No GPS lock yet, let the OS put the main CPU in low power mode for 100ms (or until another interrupt comes in)
+      // No GPS lock yet, let the OS put the main CPU in low power mode for 250ms (or until another interrupt comes in)
       // i.e. don't just keep spinning in loop as fast as we can.
-      delay(100);
+      delay(250);
     }
   }
 }
