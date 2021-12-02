@@ -107,6 +107,7 @@ static void gps_loop() {
         txBuffer[8] = hdopGps & 0xFF;
         txBuffer[9] = sats & 0xFF;
         txBuffer[10] = speed & 0xFF;
+        txBuffer[11] = axp.getBattVoltage()/1000.0;
     }
 
 #elif defined(PAYLOAD_USE_CAYENNE)

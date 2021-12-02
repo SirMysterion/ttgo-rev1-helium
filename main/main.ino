@@ -158,7 +158,7 @@ bool trySend() {
       buildPacket(txBuffer);
 
 #if LORAWAN_CONFIRMED_EVERY > 0
-      bool confirmed = (ttn_get_count() % LORAWAN_CONFIRMED_EVERY == 0);
+      bool confirmed = (helium_get_count() % LORAWAN_CONFIRMED_EVERY == 0);
       if (confirmed) {
         Serial.println("confirmation enabled");
       }
@@ -168,7 +168,7 @@ bool trySend() {
 
       // send
       packetQueued = true;
-      ttn_send(txBuffer, sizeof(txBuffer), LORAWAN_PORT, confirmed);
+      helium_send(txBuffer, sizeof(txBuffer), LORAWAN_PORT, confirmed);
       return true;
 
     } else {
@@ -438,7 +438,7 @@ void setup() {
 #endif
 
   // Hello
-   DEBUG_MSG(APP_NAME " ", APP_VERSION "\n");
+   DEBUG_MSG (APP_NAME " ", APP_VERSION "\n");
 
   // Don't init display if we don't have one or we are waking headless due to a timer event
   if (wakeCause == ESP_SLEEP_WAKEUP_TIMER)
@@ -528,7 +528,7 @@ void loop() {
 // #endif
 // #ifdef PREFS_DISCARD
 //       screen_print("Discarding prefs!\n");
-//       ttn_erase_prefs();
+//       helium_erase_prefs();
 //       delay(5000); // Give some time to read the screen
 //       ESP.restart();
 // #endif
