@@ -33,7 +33,7 @@ void helium_register(void (*callback)(uint8_t message));
 // -----------------------------------------------------------------------------
 
 #define APP_NAME                "Helium TTGO"
-#define APP_VERSION             "1.1-tm"
+#define APP_VERSION             "1.2-tm"
 
 // -----------------------------------------------------------------------------
 // Configuration
@@ -60,9 +60,9 @@ void helium_register(void (*callback)(uint8_t message));
 #define DEBUG_PORT              Serial          // Serial debug port
 #define SERIAL_BAUD             115200          // Serial debug baud rate
 #define SLEEP_BETWEEN_MESSAGES  false           // Do sleep between messages
-#define SEND_INTERVAL           (360 * 1000)     // Sleep for these many millis
-#define MESSAGE_TO_SLEEP_DELAY  10000            // Time after message before going to sleep
-#define LOGO_DELAY              5000            // Time to show logo on first boot
+#define SEND_INTERVAL           (20 * 1000)     // Sleep for these many millis
+#define MESSAGE_TO_SLEEP_DELAY  5000            // Time after message before going to sleep
+#define LOGO_DELAY              2500            // Time to show logo on first boot
 #define LORAWAN_PORT            10              // Port the messages will be sent to
 #define LORAWAN_CONFIRMED_EVERY 100               // Send confirmed message every these many messages (0 means never)
 #define LORAWAN_SF              DR_SF7         // Spreading factor (recommended DR_SF7 for ttn network map purposes, DR_SF10 works for slow moving trackers)
